@@ -1,0 +1,611 @@
+# 網拍商店
+
+這是一個學習用的網路商店專案，包含顧客購物頁面與管理員後台。
+
+使用者可以瀏覽商品、搜尋與排序、加入購物車，並填寫收件資料送出訂單。後端會重新確認商品價格與庫存，建立訂單並扣除庫存。
+
+管理員可以登入後台，新增與修改商品、設定圖片網址、調整庫存，以及操作商品上下架。
+
+## 功能介紹
+
+### 顧客端
+
+- 瀏覽商品列表與商品詳情。
+- 依商品名稱搜尋，並依價格排序。
+- 查看商品圖片、價格、介紹與庫存。
+- 將商品加入購物車、調整數量、移除商品或清空購物車。
+- 在同一個瀏覽器保存購物車，重新整理後可以讀回。
+- 填寫收件資料並送出訂單。
+- 下單成功後，顯示訂單編號與金額，並清空購物車。
+
+### 管理員後台
+
+- 管理員登入與登出。
+- 查看全部商品，包括下架商品。
+- 新增與修改商品資料。
+- 設定商品圖片網址。
+- 設定商品庫存。
+- 操作商品上架與下架。
+
+### 訂單處理
+
+- 由後端使用資料庫價格重新計算訂單金額。
+- 檢查商品是否上架、庫存是否足夠。
+- 使用資料庫交易，一起完成訂單、商品明細與庫存更新。
+- 保存下單當時的商品名稱、單價與購買數量。
+
+## 目前範圍
+
+本專案供學習與作品展示使用。目前完成到建立訂單與扣除庫存，尚未串接實際付款、物流與出貨功能。
+
+商品圖片目前使用圖片網址，尚未提供圖片檔案上傳。
+
+## 技術說明
+
+網站分成前端、後端與資料庫三部分：
+
+- **前端**：使用者在瀏覽器看到的畫面，例如商品列表、購物車與結帳表單。
+- **後端**：接收前端的請求，處理登入驗證、商品管理、訂單計算與庫存更新。
+- **資料庫**：保存商品、管理員、訂單與訂單明細。
+
+### 使用工具
+
+| 工具              | 在這個專案中的用途                 |
+| ----------------- | ---------------------------------- |
+| Vue 3             | 建立前端畫面，讓畫面隨資料變化更新 |
+| Vue Router        | 管理網址與頁面的對應               |
+| Pinia             | 讓不同頁面共用購物車資料與操作     |
+| Vite              | 提供前端開發伺服器與建置工具       |
+| Node.js           | 在瀏覽器外執行後端 JavaScript 程式 |
+| Express           | 建立後端 API，接收請求並回傳資料   |
+| PostgreSQL        | 儲存與查詢資料                     |
+| pg                | 讓 Node.js 連接 PostgreSQL         |
+| express-session   | 管理登入 Session                   |
+| connect-pg-simple | 將 Session 資料保存到 PostgreSQL   |
+
+購物車另外使用瀏覽器的 `localStorage` 保存，因此同一個瀏覽器重新整理後，可以讀回購物車。它和 PostgreSQL 是不同的儲存位置。
+
+### 資料如何傳遞
+
+以顯示商品列表為例：
+
+1. Vue 前端向 `/api/products` 發送請求。
+2. Express 後端接收請求。
+3. 後端透過 `pg` 向 PostgreSQL 查詢商品。
+4. 後端將結果以 JSON 格式回傳。
+5. Vue 接收商品資料並更新畫面。
+
+本機開發時，前端與後端使用不同的連接埠。Vite 的代理設定會將前端的 `/api` 請求轉交給後端。
+
+## 資料夾結構
+
+```text
+shop-portfolio/
+├── README.md                 專案介紹與操作說明
+├── .gitignore                排除私人設定與不需追蹤的檔案
+│
+├── frontend/                 前端專案
+│   ├── package.json          前端套件與執行指令
+│   ├── vite.config.js        Vite 與 API 代理設定
+│   └── src/
+│       ├── main.js           啟動 Vue、Router 與 Pinia
+│       ├── App.vue           網站共用外框與導覽列
+│       ├── assets/           共用樣式與靜態資源
+│       ├── router/           網址與頁面的對應設定
+│       ├── Store/
+│       │   └── cart.js       購物車資料與操作
+│       ├── components/
+│       │   └── ProductCard.vue  單張商品卡片
+│       └── views/            商品、購物車、結帳與管理員頁面
+│
+└── backend/                  後端專案
+    ├── package.json          後端套件與設定
+    ├── server.js             API、登入與訂單處理
+    ├── db.js                 PostgreSQL 連線設定
+    ├── password.js           密碼雜湊與驗證
+    ├── create-admin.js       建立管理員帳號的工具
+    ├── schema.sql            建立資料表
+    ├── seed.sql              加入示範商品
+    └── .env.example          環境設定範本，不含真實密鑰
+```
+
+執行後端前，需要依照 `.env.example` 建立自己的 `backend/.env`。實際使用的 `.env` 不應上傳 GitHub。
+
+### 資料庫資料表
+
+| 資料表        | 保存內容                                         |
+| ------------- | ------------------------------------------------ |
+| `products`    | 商品名稱、價格、介紹、圖片網址、上下架狀態與庫存 |
+| `admins`      | 管理員帳號與密碼雜湊                             |
+| `orders`      | 收件資料、訂單總金額、狀態與建立時間             |
+| `order_items` | 訂單商品的成交名稱、單價與數量                   |
+| `session`     | 登入 Session，由後端套件在需要時自動建立         |
+
+`schema.sql` 只建立資料表結構，不包含開發者本機的商品、帳號或訂單資料。`seed.sql` 則提供可公開使用的示範商品。
+
+## 本機安裝與執行
+
+以下步驟以 **macOS 與 Homebrew** 為例。
+
+需要啟動三個部分：
+
+- PostgreSQL：保存資料，在背景執行。
+- Express 後端：處理 API 請求。
+- Vue 前端：提供瀏覽器操作畫面。
+
+### 1. 準備工具
+
+| 工具           | 用途                               |
+| -------------- | ---------------------------------- |
+| Node.js 與 npm | 執行 JavaScript 程式、安裝專案套件 |
+| PostgreSQL 17  | 保存商品、管理員與訂單             |
+| VS Code        | 開啟與編輯專案，可替換成其他編輯器 |
+
+本專案開發時使用 Node.js `26.7.0`、npm `11.19.0` 與 PostgreSQL `17.11`。
+
+前端要求 Node.js `22.18.0` 以上的 22.x 版本，或 `24.12.0` 以上版本。
+
+#### Node.js 與 npm
+
+尚未安裝時，請前往 [Node.js 官方下載頁](https://nodejs.org/en/download)，選擇符合版本需求的 macOS 安裝方式。
+
+安裝後重新開啟終端機，確認：
+
+```bash
+node -v
+npm -v
+```
+
+兩個指令都應顯示版本號碼。
+
+#### PostgreSQL
+
+以下使用 Homebrew 安裝。尚未安裝 Homebrew 時，請先依 [Homebrew 官方網站](https://brew.sh/) 的指示完成安裝與終端機設定。
+
+確認 Homebrew 可執行：
+
+```bash
+brew --version
+```
+
+安裝 PostgreSQL 17：
+
+```bash
+brew install postgresql@17
+```
+
+啟動資料庫服務：
+
+```bash
+brew services start postgresql@17
+```
+
+此指令會啟動 PostgreSQL，並設定登入 Mac 時自動啟動。已安裝並啟動者可跳過。詳見 [Homebrew PostgreSQL 17 說明](https://formulae.brew.sh/formula/postgresql@17)。
+
+確認 PostgreSQL 工具可執行：
+
+```bash
+"$(brew --prefix postgresql@17)/bin/psql" --version
+```
+
+這裡使用安裝路徑執行工具，避免尚未設定 `PATH` 時出現 `command not found`。
+
+### 2. 開啟專案與安裝套件
+
+下載並解壓縮專案，或透過 GitHub Desktop 複製專案到電腦。
+
+使用 VS Code 開啟**同時包含 `frontend`、`backend` 的總資料夾**，再選擇「終端機 → 新增終端機」。
+
+先輸入：
+
+```bash
+ls
+```
+
+確認清單中有 `frontend` 與 `backend`，再依序執行：
+
+```bash
+cd frontend
+npm install
+cd ../backend
+npm install
+cd ..
+```
+
+這些指令會：
+
+1. 進入前端並安裝前端套件。
+2. 進入後端並安裝後端套件。
+3. 回到專案總資料夾。
+
+`npm install` 會依照專案設定安裝需要的套件，並產生 `node_modules` 資料夾。它不會自動建立資料庫，也不會啟動網站。
+
+## 本機安裝與執行
+
+以下步驟以 **macOS 與 Homebrew** 為例。
+
+需要啟動三個部分：
+
+- PostgreSQL：保存資料，在背景執行。
+- Express 後端：處理 API 請求。
+- Vue 前端：提供瀏覽器操作畫面。
+
+### 1. 準備工具
+
+| 工具           | 用途                               |
+| -------------- | ---------------------------------- |
+| Node.js 與 npm | 執行 JavaScript 程式、安裝專案套件 |
+| PostgreSQL 17  | 保存商品、管理員與訂單             |
+| VS Code        | 開啟與編輯專案，可替換成其他編輯器 |
+
+本專案開發時使用 Node.js `26.7.0`、npm `11.19.0` 與 PostgreSQL `17.11`。
+
+前端要求 Node.js `22.18.0` 以上的 22.x 版本，或 `24.12.0` 以上版本。
+
+#### Node.js 與 npm
+
+尚未安裝時，請前往 [Node.js 官方下載頁](https://nodejs.org/en/download)，選擇符合版本需求的 macOS 安裝方式。
+
+安裝後重新開啟終端機，確認：
+
+```bash
+node -v
+npm -v
+```
+
+兩個指令都應顯示版本號碼。
+
+#### PostgreSQL
+
+以下使用 Homebrew 安裝。尚未安裝 Homebrew 時，請先依 [Homebrew 官方網站](https://brew.sh/) 的指示完成安裝與終端機設定。
+
+確認 Homebrew 可執行：
+
+```bash
+brew --version
+```
+
+安裝 PostgreSQL 17：
+
+```bash
+brew install postgresql@17
+```
+
+啟動資料庫服務：
+
+```bash
+brew services start postgresql@17
+```
+
+此指令會啟動 PostgreSQL，並設定登入 Mac 時自動啟動。已安裝並啟動者可跳過。詳見 [Homebrew PostgreSQL 17 說明](https://formulae.brew.sh/formula/postgresql@17)。
+
+確認 PostgreSQL 工具可執行：
+
+```bash
+"$(brew --prefix postgresql@17)/bin/psql" --version
+```
+
+這裡使用安裝路徑執行工具，避免尚未設定 `PATH` 時出現 `command not found`。
+
+### 2. 開啟專案與安裝套件
+
+下載並解壓縮專案，或透過 GitHub Desktop 複製專案到電腦。
+
+使用 VS Code 開啟**同時包含 `frontend`、`backend` 的總資料夾**，再選擇「終端機 → 新增終端機」。
+
+先輸入：
+
+```bash
+ls
+```
+
+確認清單中有 `frontend` 與 `backend`，再依序執行：
+
+```bash
+cd frontend
+npm install
+cd ../backend
+npm install
+cd ..
+```
+
+這些指令會：
+
+1. 進入前端並安裝前端套件。
+2. 進入後端並安裝後端套件。
+3. 回到專案總資料夾。
+
+`npm install` 會依照專案設定安裝需要的套件，並產生 `node_modules` 資料夾。它不會自動建立資料庫，也不會啟動網站。
+
+## 本機安裝與執行
+
+以下步驟以 **macOS 與 Homebrew** 為例。
+
+需要啟動三個部分：
+
+- PostgreSQL：保存資料，在背景執行。
+- Express 後端：處理 API 請求。
+- Vue 前端：提供瀏覽器操作畫面。
+
+### 1. 準備工具
+
+| 工具           | 用途                               |
+| -------------- | ---------------------------------- |
+| Node.js 與 npm | 執行 JavaScript 程式、安裝專案套件 |
+| PostgreSQL 17  | 保存商品、管理員與訂單             |
+| VS Code        | 開啟與編輯專案，可替換成其他編輯器 |
+
+本專案開發時使用 Node.js `26.7.0`、npm `11.19.0` 與 PostgreSQL `17.11`。
+
+前端要求 Node.js `22.18.0` 以上的 22.x 版本，或 `24.12.0` 以上版本。
+
+#### Node.js 與 npm
+
+尚未安裝時，請前往 [Node.js 官方下載頁](https://nodejs.org/en/download)，選擇符合版本需求的 macOS 安裝方式。
+
+安裝後重新開啟終端機，確認：
+
+```bash
+node -v
+npm -v
+```
+
+兩個指令都應顯示版本號碼。
+
+#### PostgreSQL
+
+以下使用 Homebrew 安裝。尚未安裝 Homebrew 時，請先依 [Homebrew 官方網站](https://brew.sh/) 的指示完成安裝與終端機設定。
+
+確認 Homebrew 可執行：
+
+```bash
+brew --version
+```
+
+安裝 PostgreSQL 17：
+
+```bash
+brew install postgresql@17
+```
+
+啟動資料庫服務：
+
+```bash
+brew services start postgresql@17
+```
+
+此指令會啟動 PostgreSQL，並設定登入 Mac 時自動啟動。已安裝並啟動者可跳過。詳見 [Homebrew PostgreSQL 17 說明](https://formulae.brew.sh/formula/postgresql@17)。
+
+確認 PostgreSQL 工具可執行：
+
+```bash
+"$(brew --prefix postgresql@17)/bin/psql" --version
+```
+
+這裡使用安裝路徑執行工具，避免尚未設定 `PATH` 時出現 `command not found`。
+
+### 2. 開啟專案與安裝套件
+
+下載並解壓縮專案，或透過 GitHub Desktop 複製專案到電腦。
+
+使用 VS Code 開啟**同時包含 `frontend`、`backend` 的總資料夾**，再選擇「終端機 → 新增終端機」。
+
+先輸入：
+
+```bash
+ls
+```
+
+確認清單中有 `frontend` 與 `backend`，再依序執行：
+
+```bash
+cd frontend
+npm install
+cd ../backend
+npm install
+cd ..
+```
+
+這些指令會：
+
+1. 進入前端並安裝前端套件。
+2. 進入後端並安裝後端套件。
+3. 回到專案總資料夾。
+
+`npm install` 會依照專案設定安裝需要的套件，並產生 `node_modules` 資料夾。它不會自動建立資料庫，也不會啟動網站。
+
+### 7. 設定後端環境變數
+
+環境變數用來保存每台電腦不同的設定，例如資料庫帳號與登入密鑰。
+
+在專案總資料夾執行：
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+這會複製範本，建立實際使用的設定檔。
+
+如果已經有 `backend/.env`，請直接編輯原檔，不要用這個指令覆蓋。
+
+使用編輯器開啟 `backend/.env`，確認包含以下設定：
+
+```dotenv
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=shop_portfolio
+DB_USER=
+DB_PASSWORD=
+
+SESSION_SECRET=
+
+ADMIN_USERNAME=
+ADMIN_PASSWORD=
+```
+
+依照下面說明填入等號右邊的值。
+
+| 設定             | 填寫內容                                      |
+| ---------------- | --------------------------------------------- |
+| `DB_HOST`        | 本機資料庫使用 `localhost`                    |
+| `DB_PORT`        | PostgreSQL 預設連接埠為 `5432`                |
+| `DB_NAME`        | 前面建立的資料庫名稱：`shop_portfolio`        |
+| `DB_USER`        | 你自己的 PostgreSQL 帳號                      |
+| `DB_PASSWORD`    | PostgreSQL 帳號的密碼；本機未設定密碼時可留空 |
+| `SESSION_SECRET` | 自行產生的隨機密鑰，產生方式見下方            |
+| `ADMIN_USERNAME` | 自己設定的網站管理員帳號                      |
+| `ADMIN_PASSWORD` | 自己設定的網站管理員密碼，至少 12 個字元      |
+
+#### 如何確認資料庫帳號
+
+若依本指南使用 Homebrew 的預設本機帳號，可在終端機輸入：
+
+```bash
+whoami
+```
+
+將顯示的使用者名稱填入 `DB_USER`。如果你的 PostgreSQL 使用另外建立的帳號，請填實際的資料庫帳號。
+
+`DB_USER`、`DB_PASSWORD` 是讓後端連接資料庫使用的，和網站登入表單的管理員帳密不同。
+
+#### 產生 Session 密鑰
+
+執行：
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+將產生的整串文字貼到 `.env` 的 `SESSION_SECRET=` 後面。
+
+這個密鑰供後端簽署登入 Cookie，不是管理員密碼。一般情況下保持固定；更換後，原有登入 Cookie 會失效，需要重新登入。
+
+`.env` 包含私人設定，應保留在自己的電腦，不要上傳 GitHub。可公開的 `.env.example` 只提供設定格式，不應填入真實密碼或密鑰。
+
+### 8. 建立網站管理員
+
+確認資料表已建立、`.env` 已設定完成後，在專案總資料夾依序執行：
+
+```bash
+cd backend
+npm run create-admin
+```
+
+這個指令會：
+
+1. 讀取 `.env` 的管理員帳號與密碼。
+2. 將密碼處理成雜湊。
+3. 把帳號與密碼雜湊存進 `admins` 資料表。
+
+成功時，終端機會顯示「管理員已建立」及帳號資料。確認成功後回到總資料夾：
+
+```bash
+cd ..
+```
+
+同一個帳號只需建立一次。重複執行可能出現帳號不可重複的錯誤。
+
+管理員建立完成後，可以從 `.env` 移除 `ADMIN_USERNAME`、`ADMIN_PASSWORD`；資料庫連線設定與 `SESSION_SECRET` 必須保留。
+
+網站登入時會讀取資料庫中的管理員資料。因此，之後只修改 `.env` 的管理員帳密，不會修改已存在的帳號或密碼。
+
+### 9. 啟動網站
+
+確認 PostgreSQL 服務正在執行，並且已完成資料表、示範商品、環境設定與管理員帳號的建立。
+
+前端和後端需要**分別使用兩個終端機**。服務啟動後會持續執行，不會立刻回到可輸入指令的提示符號，這是正常現象。
+
+#### 終端機 A：啟動後端
+
+從專案總資料夾執行：
+
+```bash
+cd backend
+npm run dev
+```
+
+成功時應顯示：
+
+```text
+後端已啟動：http://localhost:3000
+```
+
+可用瀏覽器開啟 [商品 API](http://localhost:3000/api/products)，確認能看到商品 JSON 資料。
+
+JSON 是程式交換資料的格式，這個網址用來檢查後端，不是商店畫面。
+
+#### 終端機 B：啟動前端
+
+在 VS Code 選擇「終端機 → 新增終端機」。
+
+確認新終端機目前位於專案總資料夾，再執行：
+
+```bash
+cd frontend
+npm run dev
+```
+
+開啟終端機顯示的網址，通常是：
+
+[http://localhost:5173](http://localhost:5173)
+
+如果 `5173` 已被占用，Vite 可能使用其他連接埠，請以終端機實際顯示的網址為準。
+
+前後端的終端機都需要保持執行。想停止服務時，在對應終端機按 **Control＋C**。
+
+### 10. 操作與確認功能
+
+以下網址以本機前端使用 `5173` 為例。
+
+| 頁面       | 路徑               | 用途                             |
+| ---------- | ------------------ | -------------------------------- |
+| 商品首頁   | `/`                | 瀏覽、搜尋與排序商品             |
+| 商品詳情   | `/products/商品ID` | 查看介紹、圖片、庫存與加入購物車 |
+| 購物車     | `/cart`            | 調整購買數量與前往結帳           |
+| 結帳       | `/checkout`        | 填寫收件資料並送出訂單           |
+| 管理員登入 | `/admin/login`     | 使用自己建立的管理員帳密登入     |
+| 管理後台   | `/admin`           | 管理商品、上下架、圖片與庫存     |
+
+商品詳情中的「商品ID」要替換成實際編號。一般操作可直接點擊商品名稱，不需要自己輸入編號。
+
+#### 顧客購物流程
+
+1. 開啟商品首頁，測試搜尋與價格排序。
+2. 點進有庫存的商品，選擇數量並加入購物車。
+3. 開啟購物車，確認數量、商品小計與總金額。
+4. 點「前往結帳」，填寫練習用收件資料。
+5. 按「送出訂單」一次。
+6. 成功後應顯示訂單編號與金額，並清空購物車。
+
+送出訂單會真的寫入本機資料庫並扣除庫存，但不會實際收款或安排配送。
+
+加入購物車本身不會扣庫存。送出訂單時，後端才會重新檢查商品、價格與庫存。
+
+#### 管理員操作流程
+
+1. 開啟 [管理員登入頁](http://localhost:5173/admin/login)。
+2. 使用前面建立的管理員帳密登入。
+3. 新增或修改商品，確認列表更新。
+4. 下架一件商品，再重新載入顧客首頁，確認該商品不再顯示。
+5. 重新上架，確認商品恢復顯示。
+6. 查看剛才下單的商品，確認庫存依購買數量減少。
+7. 登出後重新進入 `/admin`，應顯示請先登入。
+
+圖片欄位需填入瀏覽器可以直接載入的圖片網址。空網址不顯示圖片；網址格式有效，也不保證外部網站允許載入該圖片。
+
+### 11. 常見問題
+
+| 問題                                    | 檢查方式                                                                                |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| `npm run dev` 顯示找不到指令            | 確認目前位於 `frontend` 或 `backend`，不是專案總資料夾，並確認使用最新的 `package.json` |
+| Node.js 或 npm 顯示 `command not found` | 確認已安裝 Node.js，並重新開啟終端機                                                    |
+| `psql` 顯示 `command not found`         | 本指南使用完整的 Homebrew 工具路徑，請完整複製指令                                      |
+| 資料庫無法連線                          | 確認 PostgreSQL 已啟動，以及 `.env` 的資料庫設定正確                                    |
+| 提示資料表不存在                        | 確認 `schema.sql` 已成功匯入，而且連到正確資料庫                                        |
+| 提示缺少 `SESSION_SECRET`               | 確認有 `backend/.env`、已填入密鑰，並從 `backend` 使用 `npm run dev` 啟動               |
+| 商品載入失敗                            | 先確認後端的 `/api/products` 能回傳資料，再檢查前端代理設定                             |
+| 出現 `Unexpected token '<'`             | 通常是預期 JSON，卻收到 HTML。檢查 API 路徑、Vite 的 `server.proxy` 設定與後端服務      |
+| 出現 `EADDRINUSE`                       | 指定連接埠已被其他程式使用，先確認是否已有同一個後端正在執行                            |
+| 管理員帳號無法登入                      | 確認建立帳號成功，並使用當時設定的帳密；修改 `.env` 不會更新資料庫內的既有帳密          |
+| 商品沒有圖片                            | 確認資料庫有保存圖片網址，且該網址可以載入圖片                                          |
+| 網站可開啟，但無法載入資料              | 前端與後端是不同服務，兩個都必須啟動                                                    |
